@@ -26,16 +26,29 @@ public class player_Move : MonoBehaviour
 
     Rigidbody2D body;
 
+    bool isWalled = false;
     bool isGrounded;
     float horizontalMovement = 0;
 
 
     public LayerMask groundLayer;
 
+    [Header("wall Settings")]
+    public Transform wallCheckTrasform;
+    public Vector2 wallCheckSize = new Vector2(0.5f, 0.1f);
+
+    public LayerMask wallLayer;
+
+
+
+    [Header("audioSFX")]
+    public AudioClip jumpSFX;
+
+
     [Header("Components")]
     public Animator playerAnimator;
     public SpriteRenderer playerRenderer;
-
+    public AudioSource AudioSource;
 
 
     public void Update()
@@ -70,6 +83,7 @@ public class player_Move : MonoBehaviour
     {
         body.linearVelocityX = horizontalMovement * playerSpeed;
         GroundCheck();
+        SetGravity();
     }
 
     public void GroundCheck()
@@ -79,6 +93,16 @@ public class player_Move : MonoBehaviour
          isGrounded = true; 
         else
          isGrounded = false; 
+    }
+
+
+    public void wallCheck()
+    {
+        if (Physics2D.OverlapBox(wallCheckTrasform.position, wallCheckSize, 0, wallLayer))
+
+            isWalled = true;
+        else
+            isWalled = false;
     }
 
 
@@ -94,6 +118,7 @@ public class player_Move : MonoBehaviour
             if (context.performed)
             {
                 body.linearVelocityY = jumpForce;
+                AudioSource.PlayOneShot(jumpSFX);
 
             }         
         }
@@ -108,6 +133,7 @@ public class player_Move : MonoBehaviour
     public void OnDrawGizmos()
     {
         Gizmos.DrawCube(groundCheckTrasform.position, groundCheckSize);
+        Gizmos.DrawCube(wallCheckTrasform.position, wallCheckSize);
     }
 
 }
