@@ -8,13 +8,16 @@ public class player_Move : MonoBehaviour
     [Header("General Settins")]
     public float playerSpeed = 10;
     public float jumpForce = 5;
-
+    public float wallJumpXForce = 5;
+    public float wallJumpYForce = 8;
+    
 
 
 
     [Header("Gravity Settins")]
     public float baseGravity = 2;
-    public float maxFallSpeed = 18f;
+    public float maxFallSpeed = 10f;
+    public float wallSlidemaxFallSpeed = 5f;
     public float fallspeedmultiplier = 2f;
 
 
@@ -26,15 +29,18 @@ public class player_Move : MonoBehaviour
 
     Rigidbody2D body;
 
-    bool isWalled = false;
+    bool leftWallCollision;
+    bool rightWallCollision;
     bool isGrounded;
     float horizontalMovement = 0;
+    float wallJumpXSpeed = 0;
 
 
     public LayerMask groundLayer;
 
     [Header("wall Settings")]
-    public Transform wallCheckTrasform;
+    public Transform leftWallCheckTrasform;
+    public Transform rightWallCheckTrasform;
     public Vector2 wallCheckSize = new Vector2(0.5f, 0.1f);
 
     public LayerMask wallLayer;
@@ -69,8 +75,17 @@ public class player_Move : MonoBehaviour
         if (body.linearVelocityY < 0)
         {
             body.gravityScale = baseGravity * fallspeedmultiplier;
-            body.linearVelocityY = Mathf.Max(body.linearVelocityY, -maxFallSpeed);
-        }   
+
+            if (leftWallCollision || rightWallCollision)
+                body.linearVelocityY = Mathf.Max(body.linearVelocityY, -wallSlidemaxFallSpeed);
+            else
+                body.linearVelocityY = Mathf.Max(body.linearVelocityY, -maxFallSpeed);
+
+
+
+        }
+        else
+            body.gravityScale = baseGravity;
     }
     
     public void Awake()
@@ -81,9 +96,20 @@ public class player_Move : MonoBehaviour
 
     public void FixedUpdate()
     {
-        body.linearVelocityX = horizontalMovement * playerSpeed;
+        body.linearVelocityX = (horizontalMovement * playerSpeed) + wallJumpXSpeed;
         GroundCheck();
+        wallCheck();
         SetGravity();
+        
+        if (wallJumpXSpeed != 0)
+        wallJumpXSpeed *= 0.92f;
+        if (Mathf.Abs(wallJumpXSpeed) < 0.01f) 
+        wallJumpXSpeed = 0;
+        
+        if (body.linearVelocityX > 0)
+        body.linearVelocityX = Mathf.Min(playerSpeed, body.linearVelocityX);
+        if (body.linearVelocityX < 0)
+            body.linearVelocityX = Mathf.Max(-playerSpeed, body.linearVelocityX);
     }
 
     public void GroundCheck()
@@ -98,11 +124,17 @@ public class player_Move : MonoBehaviour
 
     public void wallCheck()
     {
-        if (Physics2D.OverlapBox(wallCheckTrasform.position, wallCheckSize, 0, wallLayer))
+        if (Physics2D.OverlapBox(leftWallCheckTrasform.position, wallCheckSize, 0, wallLayer))
 
-            isWalled = true;
+            leftWallCollision = true;
         else
-            isWalled = false;
+            leftWallCollision = false;
+
+        if (Physics2D.OverlapBox(rightWallCheckTrasform.position, wallCheckSize, 0, wallLayer))
+
+            rightWallCollision = true;
+        else
+            rightWallCollision = false;
     }
 
 
@@ -113,14 +145,26 @@ public class player_Move : MonoBehaviour
 
     public void PlayerInput_Jump(CallbackContext context)
     {
-        if (isGrounded)
+        if (context.performed)
         {
-            if (context.performed)
+            if (isGrounded)
             {
                 body.linearVelocityY = jumpForce;
                 AudioSource.PlayOneShot(jumpSFX);
 
-            }         
+            }
+            else if (rightWallCollision)
+            {
+                wallJumpXSpeed = -wallJumpXForce;
+                body.linearVelocityY = wallJumpYForce;
+                AudioSource.PlayOneShot(jumpSFX);
+            }
+            else if (leftWallCollision)
+            {
+               wallJumpXSpeed = wallJumpXForce;
+                body.linearVelocityY = wallJumpYForce;
+                AudioSource.PlayOneShot(jumpSFX);
+            }
         }
 
         if (context.canceled && body.linearVelocityY >0)
@@ -133,7 +177,8 @@ public class player_Move : MonoBehaviour
     public void OnDrawGizmos()
     {
         Gizmos.DrawCube(groundCheckTrasform.position, groundCheckSize);
-        Gizmos.DrawCube(wallCheckTrasform.position, wallCheckSize);
+        Gizmos.DrawCube(leftWallCheckTrasform.position, wallCheckSize);
+        Gizmos.DrawCube(rightWallCheckTrasform.position, wallCheckSize);
     }
 
 }
